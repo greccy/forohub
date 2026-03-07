@@ -59,7 +59,20 @@ public class TopicoController {
             @PathVariable Long id,
             @RequestBody @Valid DatosActualizacionTopico datos) {
 
-        var topico = repository.getReferenceById(id);
+        var optionalTopico = repository.findById(id);
+        if (!optionalTopico.isPresent()) {
+            throw new ValidacionException("No existe un tópico con el ID informado");
+        }
+
+        if (datos.titulo() != null || datos.mensaje() != null) {
+            var titulo = datos.titulo() != null ? datos.titulo() : optionalTopico.get().getTitulo();
+            var mensaje = datos.mensaje() != null ? datos.mensaje() : optionalTopico.get().getMensaje();
+            if (repository.existsByTituloOrMensaje(titulo, mensaje)) {
+                throw new ValidacionException("Ya existe un tópico con ese título o mensaje");
+            }
+        }
+
+        var topico = optionalTopico.get();
         topico.actualizar(datos);
         return ResponseEntity.ok(new DatosDetalleTopico(topico));
     }
