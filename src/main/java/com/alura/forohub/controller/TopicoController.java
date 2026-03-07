@@ -1,9 +1,11 @@
 package com.alura.forohub.controller;
 
+import com.alura.forohub.domain.ValidacionException;
 import com.alura.forohub.domain.topico.*;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -20,14 +22,16 @@ public class TopicoController {
     @Autowired
     private TopicoRepository repository;
 
+    @Autowired
+    private RegistroDeTopicos registroDeTopicos;
+
     @PostMapping
     @Transactional
     public ResponseEntity<DatosDetalleTopico> registrar(
             @RequestBody @Valid DatosRegistroTopico datos,
             UriComponentsBuilder uriBuilder) {
 
-        var topico = new Topico(datos);
-        repository.save(topico);
+        var topico = registroDeTopicos.registrar(datos);
 
         var uri = uriBuilder.path("/topicos/{id}").buildAndExpand(topico.getId()).toUri();
         return ResponseEntity.created(uri).body(new DatosDetalleTopico(topico));
@@ -35,7 +39,8 @@ public class TopicoController {
 
     @GetMapping
     public ResponseEntity<Page<DatosListaTopico>> listar(
-            @PageableDefault(size = 10, sort = { "fechaCreacion" }) Pageable paginacion) {
+            @PageableDefault(size = 10, sort = {
+                    "fechaCreacion" }, direction = Sort.Direction.ASC) Pageable paginacion) {
 
         var page = repository.findAll(paginacion).map(DatosListaTopico::new);
         return ResponseEntity.ok(page);
@@ -43,7 +48,8 @@ public class TopicoController {
 
     @GetMapping("/{id}")
     public ResponseEntity<DatosDetalleTopico> detallar(@PathVariable Long id) {
-        var topico = repository.getReferenceById(id);
+        var topico = repository.findById(id)
+                .orElseThrow(() -> new ValidacionException("No existe un tópico con el ID informado"));
         return ResponseEntity.ok(new DatosDetalleTopico(topico));
     }
 
